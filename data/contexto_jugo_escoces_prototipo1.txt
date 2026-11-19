@@ -1,0 +1,132 @@
+CONTEXTO - PROTÓTIPO 1: PINO BRAILLE COM JUGO ESCOCÊS (IMPRESSO E FUNCIONANDO)
+(Resumo para o Claude Code. Este é o primeiro mecanismo que foi impresso, montado e testado
+com sucesso. Arquivo de CAD: pino_braille_jugo_b3d.py, em build123d.)
+
+============================================================
+1. OBJETIVO DO PROJETO
+============================================================
+Iniciação científica: criar uma alternativa de baixo custo às celas braille piezoelétricas
+comerciais (caras: dezenas de dólares por cela). Cada ponto braille é movido por um micro
+motor de passo e um mecanismo impresso em resina que transforma o giro do motor em subida e
+descida do pino.
+
+Este protótipo move UM pino. Ele valida o mecanismo antes de escalar para a cela inteira.
+
+============================================================
+2. MOTOR E ELETRÔNICA
+============================================================
+- Micro motor de passo genérico (AliExpress, "5PCS Micro Stepper Motor DC 5V 2-phase 4-wire
+  4.5MM 4.9MM", versão de Ø4,5 mm). 2 fases, 4 fios, BIPOLAR.
+- Ø4,5 x 8,6 mm. Eixo Ø0,7 mm com parte chata (eixo em "D", 0,5 mm do lado chato até o
+  oposto), 1,5 mm de comprimento.
+- 20 passos por volta = 18° por passo (medido na prática: 10 passos = meia volta).
+- Tensão nominal 5 V; resistência por bobina ~12-21 Ω (anúncios divergem).
+- Corpo com duas "latinhas" empilhadas, uma bobina em cada; 4 pinos de terminal, 2 por
+  metade. Fios finos soldados nos terminais.
+- Driver: módulo "Ponte H L298N SMD" mini (chip MX1508, NÃO é o L298N de verdade):
+  IN1/IN2 -> bobina A (MOTOR-A), IN3/IN4 -> bobina B (MOTOR-B), alimentação + e −.
+  Lógica: 1/0 corrente num sentido, 0/1 no outro, 0/0 bobina desligada.
+- ESP32 (clássico) com ESP-IDF no VS Code. Ligação usada:
+  GPIO25 -> IN1, GPIO26 -> IN2, GPIO27 -> IN3, GPIO14 -> IN4, GND comum.
+  Capacitores 100 µF + 100 nF entre + e − perto do módulo.
+- Alimentação do motor: 3,3 V funciona; 5 V é a nominal (mais torque).
+
+============================================================
+3. O MECANISMO: JUGO ESCOCÊS (SCOTCH YOKE)
+============================================================
+- O motor fica DEITADO (eixo horizontal, eixo Y no CAD). O pino braille sobe em Z.
+- MANIVELA: disco preso no eixo do motor (furo em D) com um pininho excêntrico.
+- CORREDIÇA: peça que só desliza na vertical, com uma FENDA HORIZONTAL onde o pininho
+  excêntrico entra. O pino braille faz parte da corrediça e sai pelo furo da tampa.
+- Quando o motor gira, o pininho anda em círculo; só a componente vertical passa para a
+  corrediça. Altura do pino a partir do repouso = e * (1 - cos(ângulo)).
+- Curso total = 2 x excentricidade. Protótipo impresso: excentricidade 1,0 mm -> curso 2 mm
+  (escolhido grande para ver bem). Para braille real: excentricidade ~0,3-0,35 mm
+  (curso ~0,6-0,7 mm).
+- Com o motor de 20 passos: 10 passos sobem o pino (repouso -> topo), mais 10 descem.
+- Movimento FORÇADO nos dois sentidos: a fenda empurra para cima e puxa para baixo (sem mola).
+- TRAVA nas pontas: no topo e no repouso (pontos mortos), a força do dedo passa pelo centro
+  do eixo e NÃO gira o motor. Por isso as bobinas podem ser desligadas depois de cada
+  movimento (economia de energia, motor frio).
+- Os pontos mortos são definidos pela própria manivela, sem batente: nada encosta em nada
+  nas pontas.
+- Altura por passo (e = 1 mm), a partir do repouso:
+    passo 0: 0,000 | 1: 0,049 | 2: 0,191 | 3: 0,412 | 4: 0,691 | 5: 1,000
+    passo 6: 1,309 | 7: 1,588 | 8: 1,809 | 9: 1,951 | 10: 2,000 (topo)
+    passos 11-20: espelho (volta ao repouso em 20)
+  Perto das pontas cada passo move pouco (0,05 mm); no meio do curso move ~0,31 mm.
+
+============================================================
+4. PEÇAS (pino_braille_jugo_b3d.py)
+============================================================
+Três peças impressas em resina:
+- manivela : disco (cubo Ø2,2 mm em volta do furo em D) + pininho excêntrico Ø0,8 mm.
+             Espessura 0,9 mm. Folga de 0,2 mm até a face do motor.
+- corredica: corpo 5,4 mm de largura x 1,8 mm de espessura, com fenda horizontal
+             (altura = Ø do pininho + 2 x folga; comprimento = 2e + Ø pininho + 4 x folga)
+             + pino braille Ø1,4 mm com o topo saindo pela tampa.
+- suporte  : anel que segura a frente do motor (2,5 mm de comprimento, com abertura de 3 mm
+             no topo para os terminais) + base + trilhos laterais + parede da frente
+             (impede a corrediça de sair do pininho) + tampa com furo do pino.
+             Tamanho aproximado: 7,7 x 6,8 x 9 mm.
+
+Parâmetros principais (valores do arquivo):
+  EXCENTRICIDADE = 1.0     D_PINO_BRAILLE = 1.4    D_PINO_MANIVELA = 0.8
+  FOLGA = 0.15 (peças deslizantes)                 PAREDE = 1.0
+  D_MOTOR = 4.5            FOLGA_MOTOR = 0.15      ANEL_MOTOR = 2.5
+  D_EIXO = 0.7             EIXO_CHATO = 0.5        FOLGA_EIXO = 0.10 no arquivo
+  ESP_MANIVELA = 0.9       ESP_CORREDICA = 1.8     FENDA_TERMINAIS = 3.0
+
+Folgas verificadas no CAD (excentricidade 1,0):
+  topo: 0,40 mm entre corrediça e tampa | repouso: 0,85 mm até a base | laterais: 0,15 mm.
+
+Funções do script:
+  manivela(), corredica(), suporte()   -> peças na posição de montagem
+  montagem(ângulo)                      -> peças posicionadas; no CAD, 0° = meio do curso,
+                                           90° = topo, 270° = repouso (pino rente à tampa)
+  verifica_colisoes()                   -> gira a manivela de 45° em 45° e acusa colisões
+  para_impressao()                      -> peças orientadas para imprimir (pinos em pé)
+  Saída: pasta saida/ com STL e STEP de cada peça + montagem_repouso.step (as 3 peças já
+  encaixadas, na posição de repouso, para abrir no Fusion).
+
+============================================================
+5. FABRICAÇÃO E RESULTADO
+============================================================
+- Impressora de resina Anycubic Photon Mono, fatiado no Chitubox, camada 0,03-0,05 mm.
+- Orientação que funcionou: peças em pé, pinos para cima (saem redondos); suportes só em
+  faces sem função. Retirar qualquer suporte que entre no furo do motor.
+- Foram impressas variações da manivela com furo em D de folga 0,00 / 0,05 / 0,10 mm e uma
+  com furo redondo de 0,8 mm. A manivela ENCAIXOU MUITO BEM no eixo, sob pressão.
+  (Registrar qual variação foi a usada.)
+- RESULTADO: as peças foram montadas e o mecanismo FUNCIONOU com o firmware de teste
+  (sobe e desce o pino).
+- Próximo teste: avançar passo a passo com um botão até a volta completa (360°) e ver se a
+  estrutura aguenta. Pontos de atenção: perda de passo (marcar o eixo), atrito no meio do
+  curso, trinca no pininho da manivela (parte mais fina) ou no cubo em volta do furo em D
+  (encaixe sob pressão em resina pode trincar com o tempo).
+- Estimativa de esforço: o torque do motor (décimos de mN·m) gera no máximo ~0,2-0,3 N no
+  pininho; tensão bem abaixo do limite da resina. Se algo falhar, o mais provável é o motor
+  travar por atrito, não a peça quebrar.
+
+============================================================
+6. FIRMWARE (ESP-IDF) - COMPORTAMENTO ESPERADO
+============================================================
+- Passo completo, duas fases ligadas: {A+,B+} -> {A-,B+} -> {A-,B-} -> {A+,B-}
+  (percorrer ao contrário inverte o sentido).
+- ~2000 µs por passo (500 passos/s). Aumentar se o motor perder passos.
+- Depois de cada movimento, DESLIGAR as bobinas (IN = 0/0); o mecanismo segura o pino.
+- 10 passos = do repouso ao topo. Sem sensor: montar com o pino em REPOUSO antes de ligar;
+  o firmware assume que começa embaixo.
+- Organização desejada do código: main.c só com o app_main; o resto em módulos .c/.h
+  (ex.: motor_passo.c/.h para o acionamento, botao.c/.h para o botão).
+
+============================================================
+7. OUTROS ARQUIVOS DO PROJETO (NÃO CONFUNDIR COM ESTE)
+============================================================
+- coluna_braille_tambor_b3d.py: coluna de 4 pontos com 1 motor e tambor de cames em código
+  Gray (caminho para a cela 2x4 com 2 motores). Ainda não impresso.
+- embolo_vertical_1ponto_b3d.py / embolo_vertical_b3d.py: versão com o motor EM PÉ (came
+  cilíndrico com ranhura em onda + êmbolo quadrado), 1 ponto para teste e cela de 6 pontos
+  a 6,4 mm (cela aumentada). Ainda não impresso.
+- Projeto 2 (separado): miniaturizar o dispositivo do laboratório (cela braille aumentada,
+  matriz 3x3, com solenoides, pontos pressionáveis). Não misturar com este protótipo.

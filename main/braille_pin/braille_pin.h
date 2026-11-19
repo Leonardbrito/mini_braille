@@ -20,6 +20,7 @@ typedef struct
     stepper_t *motor;  /**< Motor that moves this dot, not owned by it */
     int stroke_steps;  /**< Motor steps between the lowered and raised positions */
     bool raised;       /**< Current state of the dot */
+    uint8_t raised_hold_duty_pct;  /**< Coil PWM duty held while raised, 0 releases the coils */
 } braille_pin_t;
 
 /**
@@ -31,11 +32,14 @@ typedef struct
  * @param motor Initialized motor that moves the dot
  * @param stroke_steps Motor steps between the lowered and raised positions, must be positive
  * @param raised Assumed initial state, true if the dot starts raised
+ * @param raised_hold_duty_pct PWM duty (0-100) the coils keep while the dot is raised, so it
+ *        resists being pushed down; 0 releases them. The dot is always released when lowered.
  * @return uint8_t
  *   - 0: success
  *   - 1: invalid argument
  */
-uint8_t braille_pin_init(braille_pin_t *pin, stepper_t *motor, int stroke_steps, bool raised);
+uint8_t braille_pin_init(braille_pin_t *pin, stepper_t *motor, int stroke_steps, bool raised,
+                         uint8_t raised_hold_duty_pct);
 
 /**
  * @brief Gets the current state of the dot

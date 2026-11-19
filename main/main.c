@@ -15,11 +15,11 @@ static const char *TAG = "main";
 /** @brief Motor under test */
 static stepper_t motor;
 
-/** @brief Braille dot driven by the motor, assumed raised at boot */
+/** @brief Braille dot driven by the motor, assumed lowered at boot (assembled at rest) */
 static braille_pin_t pin;
 
-/** @brief Button that raises the dot to its highest position */
-static button_t raise_button;
+/** @brief Button that toggles the dot between lowered and raised */
+static button_t toggle_button;
 
 /**
  * @brief Initializes every module, in dependency order
@@ -37,6 +37,9 @@ void app_main(void)
         return;
     }
 
+    /* the dot is assembled at rest, and the app starts with it raised and held */
+    braille_pin_raise(&pin);
+
     /* TEMPORARY diagnostic: remove once the button is confirmed working */
     int last_level = gpio_get_level(STEP_BUTTON_GPIO);
     ESP_LOGI(TAG, "DEBUG GPIO%d idle level = %d (expected 1)", STEP_BUTTON_GPIO, last_level);
@@ -50,10 +53,11 @@ void app_main(void)
             ESP_LOGI(TAG, "DEBUG GPIO%d level changed to %d", STEP_BUTTON_GPIO, level);
         }
 
-        if (button_was_pressed(&raise_button))
+        if (button_was_pressed(&toggle_button))
         {
-            /* the dot is pushed down by hand, so the assumed state cannot be trusted */
-            braille_pin_force_raise(&pin);
+            /* the raised dot is held by the coils and the lowered one by the yoke dead point, so the
+             * assumed state can be trusted */
+            braille_pin_set(&pin, !braille_pin_is_raised(&pin));
         }
 
         vTaskDelay(pdMS_TO_TICKS(BUTTON_POLL_MS));
@@ -68,6 +72,7 @@ static uint8_t app_init(void)
         .coil_b_in1 = STEPPER_COIL_B_IN1_GPIO,
         .coil_b_in2 = STEPPER_COIL_B_IN2_GPIO,
         .step_period_us = STEPPER_STEP_PERIOD_US,
+        .first_channel = STEPPER_LEDC_FIRST_CHANNEL,
     };
 
     if (stepper_init(&motor, &motor_config))
@@ -76,15 +81,16 @@ static uint8_t app_init(void)
         return 1;
     }
 
-    if (braille_pin_init(&pin, &motor, BRAILLE_PIN_STROKE_STEPS, true))
+    if (braille_pin_init(&pin, &motor, BRAILLE_PIN_STROKE_STEPS, false,
+                         BRAILLE_PIN_RAISED_HOLD_DUTY_PCT))
     {
         ESP_LOGE(TAG, "Failed to initialize braille pin");
         return 1;
     }
 
-    if (button_init(&raise_button, STEP_BUTTON_GPIO))
+    if (button_init(&toggle_button, STEP_BUTTON_GPIO))
     {
-        ESP_LOGE(TAG, "Failed to initialize raise button");
+        ESP_LOGE(TAG, "Failed to initialize toggle button");
         return 1;
     }
 
