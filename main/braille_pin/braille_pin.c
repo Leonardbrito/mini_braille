@@ -43,6 +43,12 @@ void braille_pin_force_raise(braille_pin_t *pin)
     pin->raised = true;
 }
 
+void braille_pin_step(braille_pin_t *pin, int steps)
+{
+    ESP_LOGI(TAG, "Stepping (%d steps)", steps);
+    stepper_move(pin->motor, steps);
+}
+
 void braille_pin_lower(braille_pin_t *pin)
 {
     if (!pin->raised)

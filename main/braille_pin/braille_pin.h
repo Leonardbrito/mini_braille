@@ -67,6 +67,17 @@ void braille_pin_raise(braille_pin_t *pin);
 void braille_pin_force_raise(braille_pin_t *pin);
 
 /**
+ * @brief Moves the motor a few steps without changing the state of the dot
+ *
+ * For calibration: a partial stroke does not reach a stable position, so the raised/lowered
+ * state is left untouched. Blocks the calling task while the motor moves.
+ *
+ * @param pin Initialized instance
+ * @param steps Number of motor steps; the sign selects the direction, 0 does nothing
+ */
+void braille_pin_step(braille_pin_t *pin, int steps);
+
+/**
  * @brief Lowers the dot, doing nothing if it is already lowered
  *
  * Blocks the calling task while the motor moves.

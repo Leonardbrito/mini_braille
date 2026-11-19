@@ -18,8 +18,8 @@ static stepper_t motor;
 /** @brief Braille dot driven by the motor, assumed raised at boot */
 static braille_pin_t pin;
 
-/** @brief Button that raises the dot to its highest position */
-static button_t raise_button;
+/** @brief Button that advances the motor by one step per press */
+static button_t step_button;
 
 /**
  * @brief Initializes every module, in dependency order
@@ -37,23 +37,11 @@ void app_main(void)
         return;
     }
 
-    /* TEMPORARY diagnostic: remove once the button is confirmed working */
-    int last_level = gpio_get_level(STEP_BUTTON_GPIO);
-    ESP_LOGI(TAG, "DEBUG GPIO%d idle level = %d (expected 1)", STEP_BUTTON_GPIO, last_level);
-
     for (;;)
     {
-        int level = gpio_get_level(STEP_BUTTON_GPIO);
-        if (level != last_level)
+        if (button_was_pressed(&step_button))
         {
-            last_level = level;
-            ESP_LOGI(TAG, "DEBUG GPIO%d level changed to %d", STEP_BUTTON_GPIO, level);
-        }
-
-        if (button_was_pressed(&raise_button))
-        {
-            /* the dot is pushed down by hand, so the assumed state cannot be trusted */
-            braille_pin_force_raise(&pin);
+            braille_pin_step(&pin, 1);
         }
 
         vTaskDelay(pdMS_TO_TICKS(BUTTON_POLL_MS));
@@ -82,9 +70,9 @@ static uint8_t app_init(void)
         return 1;
     }
 
-    if (button_init(&raise_button, STEP_BUTTON_GPIO))
+    if (button_init(&step_button, STEP_BUTTON_GPIO))
     {
-        ESP_LOGE(TAG, "Failed to initialize raise button");
+        ESP_LOGE(TAG, "Failed to initialize step button");
         return 1;
     }
 
